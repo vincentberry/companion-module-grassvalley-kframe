@@ -106,5 +106,6 @@ export interface CommandResult {
 export interface ConnectionCallbacks {
 	onStateChange: (state: ConnectionState) => void
 	onCommandResult: (result: CommandResult) => void
+	onMacroAck: (macroNum: number, commandId: number) => void
 	onError: (error: string) => void
 }

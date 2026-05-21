@@ -44,9 +44,9 @@ Changes button appearance based on connection state. You can set it to trigger o
 - Reconnecting
 - Disconnected
 
-#### Macro Sent
+#### Macro Confirmed
 
-Briefly activates when a macro command is sent. Can filter by specific macro number or any macro (set to 0).
+Briefly activates when a macro command sent by Companion is acknowledged by the K-Frame. Can filter by specific macro number or any macro (set to 0).
 
 #### AUX Sent
 

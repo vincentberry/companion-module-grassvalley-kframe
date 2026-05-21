@@ -2,7 +2,7 @@ import type { ModuleInstance } from './main.js'
 
 export function UpdateVariableDefinitions(self: ModuleInstance): void {
 	self.setVariableDefinitions([
-		{ variableId: 'last_macro', name: 'Last Macro Sent' },
+		{ variableId: 'last_macro', name: 'Last Macro Confirmed' },
 		{ variableId: 'last_aux', name: 'Last AUX Routed' },
 		{ variableId: 'last_aux_source', name: 'Last AUX Source' },
 	])

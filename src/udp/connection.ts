@@ -97,7 +97,7 @@ export class UdpConnection {
 	private isClosing: boolean = false
 
 	private nextMacroId: number = 0
-	private lastSentMacroId: number | null = null
+	private pendingMacroCommands = new Map<number, number>()
 	private recentlyUsedMacroIds: number[] = []
 
 	private currentSuite: string = 'suite1a'
@@ -224,13 +224,13 @@ export class UdpConnection {
 		const macroIdNum = this.generateUniqueMacroId()
 		const payload = this.createMacroPayload(macroNum, macroIdNum)
 
-		this.lastSentMacroId = macroIdNum
+		this.pendingMacroCommands.set(macroIdNum, macroNum)
 		this.log('debug', `Sending macro ${macroNum} with ID ${macroIdNum}: ${payload.toString('hex')}`)
 
 		this.mainSocket?.send(payload, this.dynamicCommPort, this.host, (err) => {
 			if (err) {
 				this.log('error', `Macro send error: ${err.message}`)
-				this.lastSentMacroId = null
+				this.pendingMacroCommands.delete(macroIdNum)
 				this.callbacks.onCommandResult({
 					success: false,
 					command: CommandType.Macro,
@@ -473,16 +473,16 @@ export class UdpConnection {
 		// Connected phase - handle heartbeat and macro ACKs
 		else if (this.handshakeStage === HandshakeStage.Connected && rinfo.port === this.dynamicCommPort) {
 			// Check for Macro ACK (format: 000203{macro_id})
-			if (
-				this.lastSentMacroId !== null &&
-				msg.length === 4 &&
-				msg[0] === 0x00 &&
-				msg[1] === 0x02 &&
-				msg[2] === 0x03 &&
-				msg[3] === this.lastSentMacroId
-			) {
-				this.log('debug', `Macro ACK received for ID ${this.lastSentMacroId}`)
-				this.lastSentMacroId = null
+			if (msg.length === 4 && msg[0] === 0x00 && msg[1] === 0x02 && msg[2] === 0x03) {
+				const macroId = msg[3]
+				const macroNum = this.pendingMacroCommands.get(macroId)
+				if (macroNum !== undefined) {
+					this.log('debug', `Macro ACK received for macro ${macroNum} with ID ${macroId}`)
+					this.pendingMacroCommands.delete(macroId)
+					this.callbacks.onMacroAck(macroNum, macroId)
+				} else {
+					this.log('debug', `Macro ACK received for unknown ID ${macroId}`)
+				}
 			}
 			// Check for heartbeat response
 			else if (msg.equals(PAYLOADS.EXPECTED_HEARTBEAT_RESPONSE)) {
@@ -854,7 +854,7 @@ export class UdpConnection {
 		this.retryCount = 0
 		this.nextMacroId = 0
 		this.recentlyUsedMacroIds = []
-		this.lastSentMacroId = null
+		this.pendingMacroCommands.clear()
 		this.initialHeartbeatSent = false
 	}
 }

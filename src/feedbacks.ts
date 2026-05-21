@@ -8,8 +8,8 @@ const COLOR_BLACK = combineRgb(0, 0, 0)
 export function UpdateFeedbacks(self: ModuleInstance): void {
 	self.setFeedbackDefinitions({
 		macro_sent: {
-			name: 'Macro Sent',
-			description: 'Briefly true when a macro command is sent',
+			name: 'Macro Confirmed',
+			description: 'Briefly true when a macro command is acknowledged by the K-Frame',
 			type: 'boolean',
 			defaultStyle: {
 				bgcolor: COLOR_GREEN,

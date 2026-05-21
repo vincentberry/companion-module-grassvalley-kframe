@@ -90,6 +90,7 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 			{
 				onStateChange: (state) => this.handleStateChange(state),
 				onCommandResult: (result) => this.handleCommandResult(result),
+				onMacroAck: (macroNum, commandId) => this.handleMacroAck(macroNum, commandId),
 				onError: (error) => this.handleError(error),
 			},
 			(level, message) => this.log(level, message),
@@ -144,23 +145,27 @@ export class ModuleInstance extends InstanceBase<ModuleConfig> {
 	}
 
 	/**
+	 * Handle confirmed macro command acknowledgements
+	 */
+	private handleMacroAck(macroNum: number, commandId: number): void {
+		this.log('debug', `Macro ${macroNum} confirmed by K-Frame ACK ${commandId}`)
+		this.lastMacroSent = macroNum
+		this.setVariableValues({ last_macro: macroNum.toString() })
+		this.checkFeedbacks('macro_sent')
+
+		this.clearMacroFeedbackTimer()
+		this.macroFeedbackTimer = setTimeout(() => {
+			this.lastMacroSent = null
+			this.checkFeedbacks('macro_sent')
+		}, FEEDBACK_CLEAR_DELAY)
+	}
+
+	/**
 	 * Send macro command
 	 */
 	sendMacro(macroNum: number): void {
 		if (this.udpConnection) {
 			this.udpConnection.sendMacro(macroNum)
-
-			// Set feedback state and variable
-			this.lastMacroSent = macroNum
-			this.setVariableValues({ last_macro: macroNum.toString() })
-			this.checkFeedbacks('macro_sent')
-
-			// Clear feedback after delay
-			this.clearMacroFeedbackTimer()
-			this.macroFeedbackTimer = setTimeout(() => {
-				this.lastMacroSent = null
-				this.checkFeedbacks('macro_sent')
-			}, FEEDBACK_CLEAR_DELAY)
 		}
 	}
 

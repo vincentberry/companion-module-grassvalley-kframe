@@ -28,10 +28,10 @@ Companion module for controlling GrassValley K-Frame video production systems vi
 
 ## Feedbacks
 
-| Feedback   | Description                            |
-| ---------- | -------------------------------------- |
-| Macro Sent | Briefly true when a macro is sent      |
-| AUX Sent   | Briefly true when an AUX route is sent |
+| Feedback        | Description                                                   |
+| --------------- | ------------------------------------------------------------- |
+| Macro Confirmed | Briefly true when a sent macro is acknowledged by the K-Frame |
+| AUX Sent        | Briefly true when an AUX route is sent                        |
 
 ## Presets
 
@@ -47,6 +47,7 @@ This module implements the K-Frame UDP protocol:
 1. **Handshake**: Client sends `connect` to port 5000, K-Frame responds with dynamic port
 2. **Keepalive**: Periodic heartbeat messages to maintain connection
 3. **Commands**: Macro, AUX, and Suite commands sent to dynamic port
+4. **Macro ACK**: Macro feedback is shown after the K-Frame acknowledges the command ID
 
 ## License
 
