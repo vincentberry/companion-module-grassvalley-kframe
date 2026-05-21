@@ -88,10 +88,46 @@ const payloadPacket17 = Buffer.from([0x00, 0x02, 0x00, 0x01])
 const expectedHeartbeat = Buffer.from([0x00, 0x01, 0x00, 0x00])
 const heartbeatResponse = Buffer.from([0x00, 0x02, 0x00, 0x00])
 
+function parseAuxRoute(msg) {
+	if (
+		msg.length !== 28 ||
+		msg[0] !== 0x00 ||
+		msg[1] !== 0x04 ||
+		msg[4] !== 0x00 ||
+		msg[5] !== 0x02 ||
+		msg[6] !== 0x00 ||
+		msg[7] !== 0x05 ||
+		msg[8] !== 0x00 ||
+		msg[9] !== 0x00 ||
+		msg[10] !== 0x00 ||
+		msg[11] !== 0x0c ||
+		msg[12] !== 0x00 ||
+		msg[13] !== 0x00 ||
+		msg[14] !== 0x00 ||
+		msg[15] !== 0x13 ||
+		msg[16] !== 0x00 ||
+		msg[17] !== 0x7e ||
+		msg[18] !== 0x00 ||
+		msg[19] !== 0x00 ||
+		msg[20] !== 0x19 ||
+		msg[21] !== 0x00 ||
+		msg[22] !== 0x01 ||
+		msg[26] !== 0x00 ||
+		msg[27] !== 0x01
+	) {
+		return null
+	}
+
+	return {
+		messageId: msg.readUInt16BE(2),
+		auxNum: msg[23] + 1,
+		sourceNum: msg.readUInt16BE(24),
+	}
+}
+
 function resetState() {
 	handshakeStage = 1
 	listenerHandshakeStage = 1
-	lastMacroId = null
 	// Increment the dynamic port to simulate a real server
 	dynamicCommPort++
 	if (dynamicSocket) {
@@ -150,31 +186,35 @@ function onDynamicMessage(msg, rinfo) {
 	} else if (handshakeStage === 9 && msg.equals(expectedHeartbeat)) {
 		log('blue', '[HEARTBEAT]', `Received heartbeat`)
 		dynamicSocket.send(heartbeatResponse, rinfo.port, rinfo.address)
+	} else if (handshakeStage === 9 && parseAuxRoute(msg)) {
+		const auxRoute = parseAuxRoute(msg)
+		log(
+			'magenta',
+			'[AUX]',
+			`Received AUX route ${auxRoute.auxNum} -> source ${auxRoute.sourceNum} (id ${auxRoute.messageId})`,
+		)
+		const auxRouteStatus = Buffer.from(
+			`AUX_ROUTE_SENT:Aux ${auxRoute.auxNum} routed to Source ${auxRoute.sourceNum}`,
+			'utf8',
+		)
+		dynamicSocket.send(auxRouteStatus, rinfo.port, rinfo.address)
+		log('cyan', '[STATUS]', `Sent AUX_ROUTE_SENT status message for AUX ${auxRoute.auxNum}`)
 	} else if (handshakeStage === 9 && msg.length > 4 && msg[0] === 0x00 && msg[1] === 0x04 && msg[2] === 0x03) {
-		lastMacroId = msg[3]
-		log('magenta', '[MACRO]', `Received macro with id ${lastMacroId}`)
-		const ack = Buffer.from([0x00, 0x02, 0x03, lastMacroId])
+		const macroId = msg[3]
+		log('magenta', '[MACRO]', `Received macro with id ${macroId}`)
+		const ack = Buffer.from([0x00, 0x02, 0x03, macroId])
 		dynamicSocket.send(ack, rinfo.port, rinfo.address)
-		// --- Addition: send a MACRO_ACK text message after the binary ACK ---
-		const macroAckStatus = Buffer.from(`MACRO_ACK:${lastMacroId}`, 'utf8')
+		const macroAckStatus = Buffer.from(`MACRO_ACK:${macroId}`, 'utf8')
 		setTimeout(() => {
 			dynamicSocket.send(macroAckStatus, rinfo.port, rinfo.address)
-			log('cyan', '[STATUS]', `Sent MACRO_ACK status message for macro ${lastMacroId}`)
+			log('cyan', '[STATUS]', `Sent MACRO_ACK status message for macro id ${macroId}`)
 		}, 50)
-		// --- Addition: also send an AUX_ROUTE_SENT text message after the macro ACK ---
-		const auxRouteStatus = Buffer.from(`AUX_ROUTE_SENT:Aux 15 routed to Source 734`, 'utf8')
-		setTimeout(() => {
-			dynamicSocket.send(auxRouteStatus, rinfo.port, rinfo.address)
-			log('cyan', '[STATUS]', 'Sent AUX_ROUTE_SENT status message')
-		}, 100)
-		// --- End addition ---
 	} else {
 		log('yellow', '[UNKNOWN]', `[DYN] Unknown binary ou suite: ${msg.toString('hex')}`)
 	}
 }
 
 let handshakeStage = 1
-let lastMacroId = null
 let listenerHandshakeStage = 1
 // --- Listener Channel payloads ---
 const packet7 = Buffer.from([0x00, 0x01, 0x00, 0x00])
